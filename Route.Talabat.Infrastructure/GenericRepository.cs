@@ -2,6 +2,7 @@
 using Route.Talabat.Core.Entities;
 using Route.Talabat.Core.Entities.Product;
 using Route.Talabat.Core.Repositories.Contract;
+using Route.Talabat.Core.Specifications;
 using Route.Talabat.Infrastructure.Data;
 using System;
 using System.Collections.Generic;
@@ -13,13 +14,46 @@ namespace Route.Talabat.Infrastructure
 {
     public class GenericRepository<T> : IGenericRepository<T> where T : BaseEntity
     {
-        private readonly ApplicationDbContext applicationDbContext;
+        private readonly ApplicationDbContext _dbContext;
 
-        public GenericRepository(ApplicationDbContext ApplicationDbContext) => applicationDbContext = ApplicationDbContext;
+        public GenericRepository(ApplicationDbContext DbContext)
+        {
+            _dbContext = DbContext;
+        }
+        public async Task<IEnumerable<T>> GetAllAsync()
+        {
+            //if (typeof(T) == typeof(Product))
+            //{
+            //    return (IEnumerable<T>)await _dbContext.Products.Include(p => p.Brand).Include(p => p.Category).AsNoTracking().ToListAsync();
 
-        public async Task<T?> GetAsync(int id) => await applicationDbContext.Set<T>().FindAsync(id) ;
+            //}
+            return await _dbContext.Set<T>().AsNoTracking().ToListAsync();
+        }
 
+        public async Task<IEnumerable<T>> GetAllWithSpecAsync(BaseSpecifications<T> specifications)
+        {
+            return await ApplySpecifications(specifications).AsNoTracking().ToListAsync();
+        }
 
-        public async Task<IEnumerable<T>> GetAllAsync() => await applicationDbContext.Set<T>().AsNoTracking().ToListAsync();
+        public async Task<T?> GetAsync(int id)
+        {
+            //if (typeof(T) == typeof(Product))
+            //{
+            //    return await _dbContext.Products.Where(p=> p.Id == id).Include(p => p.Brand).Include(p => p.Category).FirstOrDefaultAsync() as T;
+
+            //}
+            return await _dbContext.Set<T>().FindAsync(id);
+        }
+
+        public async Task<T?> GetWithSpecAsync(BaseSpecifications<T> specifications)
+        {
+            return await ApplySpecifications(specifications).FirstOrDefaultAsync();
+        }
+        #region Helper methods
+        private IQueryable<T> ApplySpecifications(BaseSpecifications<T> specifications)
+        {
+            return SpecificationsEvaluator<T>.GetQuery(_dbContext.Set<T>(), specifications);
+        }
+        #endregion
     }
 }
